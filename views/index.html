@@ -24,7 +24,7 @@
       height: 100%;
       background: #000;
       overflow: hidden;
-      touch-action: none; /* Prevents browser zoom/scroll on mobile */
+      touch-action: none;
     }
 
     body {
@@ -46,12 +46,16 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      overflow: hidden;
     }
 
     .page img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover; /* Ensures image fills entire screen */
+      /* Maintain original aspect ratio, scale to fit */
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
       display: block;
     }
 
@@ -128,22 +132,12 @@
       pointer-events: none;
     }
 
-    /* Desktop styling */
+    /* Desktop styling - show as book */
     @media (min-width: 768px) {
       #book {
         width: 420px;
         height: 620px;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-      }
-
-      .page img {
-        object-fit: contain; /* Shows full image on desktop */
-      }
-
-      .control-btn {
-        width: 45px;
-        height: 45px;
-        font-size: 18px;
       }
     }
 
@@ -153,8 +147,25 @@
         background: #000;
       }
       
+      /* On mobile, maintain aspect ratio but fill screen */
       .page img {
-        object-fit: cover;
+        object-fit: contain;
+        max-width: 100vw;
+        max-height: 100vh;
+      }
+      
+      /* For landscape orientation */
+      @media (orientation: landscape) {
+        .page img {
+          max-height: 100vh;
+        }
+      }
+      
+      /* For portrait orientation */
+      @media (orientation: portrait) {
+        .page img {
+          max-width: 100vw;
+        }
       }
 
       .control-btn {
@@ -206,7 +217,7 @@
     // Clear any existing instance
     bookElement.innerHTML = '';
     
-    // Calculate dimensions for mobile (full screen)
+    // Calculate dimensions
     const width = isMobile ? window.innerWidth : 420;
     const height = isMobile ? window.innerHeight : 620;
     
@@ -224,12 +235,12 @@
       swipeDistance: 30
     });
 
-    // Load images
+    // Load images - adjust paths for your Node.js public folder
     pageFlip.loadFromImages([
-      "page1.jpeg",
-      "page2.jpeg",
-      "page3.jpeg",
-      "page4.jpeg"
+      "/page1.jpeg",  // Note: leading slash for absolute path from public folder
+      "/page2.jpeg",
+      "/page3.jpeg",
+      "/page4.jpeg"
     ]);
 
     // Start auto-flip
@@ -264,19 +275,17 @@
 
     // Keyboard controls
     document.addEventListener('keydown', (e) => {
-      // Prevent spacebar from scrolling
       if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault();
-      }
-      
-      if (e.key === 'ArrowLeft') goToPreviousPage();
-      if (e.key === 'ArrowRight') goToNextPage();
-      if (e.key === ' ' || e.key === 'Spacebar') {
         toggleAutoPlay();
+      } else if (e.key === 'ArrowLeft') {
+        goToPreviousPage();
+      } else if (e.key === 'ArrowRight') {
+        goToNextPage();
       }
     });
 
-    // Handle window resize
+    // Handle window resize (for orientation changes)
     let resizeTimeout;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimeout);
@@ -284,18 +293,23 @@
         initPageFlip();
       }, 250);
     });
+    
+    // Handle orientation change
+    window.addEventListener('orientationchange', () => {
+      setTimeout(initPageFlip, 100);
+    });
   }
 
   // Navigation functions
   function goToPreviousPage() {
-    if (currentPage > 0) {
+    if (currentPage > 0 && pageFlip) {
       pageFlip.flipPrev();
       showControlsTemporarily();
     }
   }
 
   function goToNextPage() {
-    if (currentPage < totalPages - 1) {
+    if (currentPage < totalPages - 1 && pageFlip) {
       pageFlip.flipNext();
       showControlsTemporarily();
     }
@@ -306,18 +320,20 @@
     if (autoFlipInterval) clearInterval(autoFlipInterval);
     
     autoFlipInterval = setInterval(() => {
-      if (currentPage < totalPages - 1) {
+      if (pageFlip && currentPage < totalPages - 1) {
         pageFlip.flipNext();
       } else {
         // Stop at last page
         clearInterval(autoFlipInterval);
         autoFlipInterval = null;
-        // Update play/pause button to show play icon
+        // Update play/pause button to show restart icon
         const playPauseBtn = document.getElementById('playPauseBtn');
-        playPauseBtn.innerHTML = '<i class="fas fa-redo"></i>';
-        playPauseBtn.title = 'Restart from beginning';
+        if (playPauseBtn) {
+          playPauseBtn.innerHTML = '<i class="fas fa-redo"></i>';
+          playPauseBtn.title = 'Restart from beginning';
+        }
       }
-    }, 2000);
+    }, 3000); // 3 seconds per page
   }
 
   function restartAutoFlip() {
@@ -328,8 +344,9 @@
   }
 
   function toggleAutoPlay() {
+    if (!pageFlip) return;
+    
     const playPauseBtn = document.getElementById('playPauseBtn');
-    const statusIndicator = document.getElementById('statusIndicator');
     
     // If at last page and user clicks restart
     if (currentPage >= totalPages - 1 && !isAutoPlaying) {
@@ -338,8 +355,10 @@
       currentPage = 0;
       isAutoPlaying = true;
       startAutoFlip();
-      playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-      playPauseBtn.title = 'Pause Auto-flip';
+      if (playPauseBtn) {
+        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        playPauseBtn.title = 'Pause Auto-flip';
+      }
       showStatusMessage('Restarting from beginning...');
       return;
     }
@@ -349,15 +368,19 @@
     if (isAutoPlaying) {
       // Start auto-flip
       startAutoFlip();
-      playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-      playPauseBtn.title = 'Pause Auto-flip';
+      if (playPauseBtn) {
+        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        playPauseBtn.title = 'Pause Auto-flip';
+      }
       showStatusMessage('Auto-flip resumed');
     } else {
       // Pause auto-flip
       clearInterval(autoFlipInterval);
       autoFlipInterval = null;
-      playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-      playPauseBtn.title = 'Resume Auto-flip';
+      if (playPauseBtn) {
+        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+        playPauseBtn.title = 'Resume Auto-flip';
+      }
       showStatusMessage('Auto-flip paused');
     }
     
@@ -367,14 +390,12 @@
   // UI functions
   function showControlsTemporarily() {
     const controls = document.getElementById('controls');
+    if (!controls) return;
     
-    // Show controls
     controls.classList.remove('hidden');
     
-    // Clear existing timeout
     if (controlsTimeout) clearTimeout(controlsTimeout);
     
-    // Hide after 3 seconds of inactivity
     controlsTimeout = setTimeout(() => {
       controls.classList.add('hidden');
     }, 3000);
@@ -382,6 +403,8 @@
 
   function showStatusMessage(message) {
     const statusIndicator = document.getElementById('statusIndicator');
+    if (!statusIndicator) return;
+    
     statusIndicator.textContent = message;
     statusIndicator.classList.add('show');
     
