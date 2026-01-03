@@ -1,0 +1,27 @@
+{
+  "name": "payroll_feedback",
+  "version": "1.0.0",
+  "description": "Feedback form for the EAD Payroll software",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ingafriyiestephen/EAD-Payroll-Feedback.git"
+  },
+  "keywords": [
+    "payroll",
+    "ead"
+  ],
+  "author": "Stephen Afriyie",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ingafriyiestephen/EAD-Payroll-Feedback/issues"
+  },
+  "homepage": "https://github.com/ingafriyiestephen/EAD-Payroll-Feedback#readme",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

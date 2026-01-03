@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Wedding Invitation</title>
+
+  <!-- PageFlip.js -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/page-flip/dist/css/page-flip.css">
+  <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.min.js"></script>
+
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      touch-action: none; /* Prevents browser zoom/scroll on mobile */
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    #book {
+      width: 100vw;
+      height: 100vh;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .page {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .page img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* Ensures image fills entire screen */
+      display: block;
+    }
+
+    /* Control buttons */
+    .controls-container {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+
+    .controls:hover {
+      opacity: 1;
+    }
+
+    .control-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-size: 20px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-btn:hover {
+      background: rgba(0, 0, 0, 0.9);
+      border-color: rgba(255, 255, 255, 0.8);
+      transform: scale(1.1);
+    }
+
+    .control-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Status indicator */
+    .status-indicator {
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-family: Arial, sans-serif;
+      opacity: 0;
+      transition: opacity 0.5s;
+      white-space: nowrap;
+    }
+
+    .status-indicator.show {
+      opacity: 0.8;
+    }
+
+    /* Hide controls initially - show on hover/touch */
+    .controls.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Desktop styling */
+    @media (min-width: 768px) {
+      #book {
+        width: 420px;
+        height: 620px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      }
+
+      .page img {
+        object-fit: contain; /* Shows full image on desktop */
+      }
+
+      .control-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+      }
+    }
+
+    /* Mobile-specific fullscreen adjustments */
+    @media (max-width: 767px) {
+      body {
+        background: #000;
+      }
+      
+      .page img {
+        object-fit: cover;
+      }
+
+      .control-btn {
+        width: 55px;
+        height: 55px;
+        font-size: 22px;
+      }
+
+      .controls {
+        gap: 20px;
+      }
+    }
+  </style>
+  
+</head>
+<body>
+
+<div id="book"></div>
+
+<!-- Controls Container -->
+<div class="controls-container">
+  <div class="status-indicator" id="statusIndicator"></div>
+  <div class="controls hidden" id="controls">
+    <button class="control-btn" id="prevBtn" title="Previous Page (←)">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <button class="control-btn" id="playPauseBtn" title="Pause Auto-flip (Space)">
+      <i class="fas fa-pause"></i>
+    </button>
+    <button class="control-btn" id="nextBtn" title="Next Page (→)">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+<script>
+  let pageFlip = null;
+  let currentPage = 0;
+  const totalPages = 4;
+  let autoFlipInterval = null;
+  let isAutoPlaying = true;
+  let controlsTimeout = null;
+
+  // Initialize PageFlip
+  function initPageFlip() {
+    const isMobile = window.innerWidth < 768;
+    const bookElement = document.getElementById('book');
+    
+    // Clear any existing instance
+    bookElement.innerHTML = '';
+    
+    // Calculate dimensions for mobile (full screen)
+    const width = isMobile ? window.innerWidth : 420;
+    const height = isMobile ? window.innerHeight : 620;
+    
+    // Create PageFlip instance
+    pageFlip = new St.PageFlip(bookElement, {
+      width: width,
+      height: height,
+      size: isMobile ? "fixed" : "stretch",
+      showCover: true,
+      mobileScrollSupport: false,
+      useMouseEvents: !isMobile,
+      usePortrait: true,
+      drawShadow: !isMobile,
+      flippingTime: 1000,
+      swipeDistance: 30
+    });
+
+    // Load images
+    pageFlip.loadFromImages([
+      "page1.jpeg",
+      "page2.jpeg",
+      "page3.jpeg",
+      "page4.jpeg"
+    ]);
+
+    // Start auto-flip
+    startAutoFlip();
+
+    // Set up event listeners
+    setupEventListeners();
+
+    // Show controls briefly on load
+    showControlsTemporarily();
+  }
+
+  // Set up event listeners
+  function setupEventListeners() {
+    // PageFlip events
+    pageFlip.on("flip", (e) => {
+      currentPage = e.data;
+      // Restart auto-flip timer when user manually flips
+      if (isAutoPlaying && autoFlipInterval) {
+        restartAutoFlip();
+      }
+    });
+
+    // Control buttons
+    document.getElementById('prevBtn').addEventListener('click', goToPreviousPage);
+    document.getElementById('nextBtn').addEventListener('click', goToNextPage);
+    document.getElementById('playPauseBtn').addEventListener('click', toggleAutoPlay);
+
+    // Show/hide controls on interaction
+    document.addEventListener('mousemove', showControlsTemporarily);
+    document.addEventListener('touchstart', showControlsTemporarily);
+
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+      // Prevent spacebar from scrolling
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+      }
+      
+      if (e.key === 'ArrowLeft') goToPreviousPage();
+      if (e.key === 'ArrowRight') goToNextPage();
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        toggleAutoPlay();
+      }
+    });
+
+    // Handle window resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        initPageFlip();
+      }, 250);
+    });
+  }
+
+  // Navigation functions
+  function goToPreviousPage() {
+    if (currentPage > 0) {
+      pageFlip.flipPrev();
+      showControlsTemporarily();
+    }
+  }
+
+  function goToNextPage() {
+    if (currentPage < totalPages - 1) {
+      pageFlip.flipNext();
+      showControlsTemporarily();
+    }
+  }
+
+  // Auto-flip functions
+  function startAutoFlip() {
+    if (autoFlipInterval) clearInterval(autoFlipInterval);
+    
+    autoFlipInterval = setInterval(() => {
+      if (currentPage < totalPages - 1) {
+        pageFlip.flipNext();
+      } else {
+        // Stop at last page
+        clearInterval(autoFlipInterval);
+        autoFlipInterval = null;
+        // Update play/pause button to show play icon
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        playPauseBtn.innerHTML = '<i class="fas fa-redo"></i>';
+        playPauseBtn.title = 'Restart from beginning';
+      }
+    }, 2000);
+  }
+
+  function restartAutoFlip() {
+    if (isAutoPlaying) {
+      clearInterval(autoFlipInterval);
+      startAutoFlip();
+    }
+  }
+
+  function toggleAutoPlay() {
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const statusIndicator = document.getElementById('statusIndicator');
+    
+    // If at last page and user clicks restart
+    if (currentPage >= totalPages - 1 && !isAutoPlaying) {
+      // Go back to first page
+      pageFlip.flip(0);
+      currentPage = 0;
+      isAutoPlaying = true;
+      startAutoFlip();
+      playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+      playPauseBtn.title = 'Pause Auto-flip';
+      showStatusMessage('Restarting from beginning...');
+      return;
+    }
+    
+    isAutoPlaying = !isAutoPlaying;
+    
+    if (isAutoPlaying) {
+      // Start auto-flip
+      startAutoFlip();
+      playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+      playPauseBtn.title = 'Pause Auto-flip';
+      showStatusMessage('Auto-flip resumed');
+    } else {
+      // Pause auto-flip
+      clearInterval(autoFlipInterval);
+      autoFlipInterval = null;
+      playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+      playPauseBtn.title = 'Resume Auto-flip';
+      showStatusMessage('Auto-flip paused');
+    }
+    
+    showControlsTemporarily();
+  }
+
+  // UI functions
+  function showControlsTemporarily() {
+    const controls = document.getElementById('controls');
+    
+    // Show controls
+    controls.classList.remove('hidden');
+    
+    // Clear existing timeout
+    if (controlsTimeout) clearTimeout(controlsTimeout);
+    
+    // Hide after 3 seconds of inactivity
+    controlsTimeout = setTimeout(() => {
+      controls.classList.add('hidden');
+    }, 3000);
+  }
+
+  function showStatusMessage(message) {
+    const statusIndicator = document.getElementById('statusIndicator');
+    statusIndicator.textContent = message;
+    statusIndicator.classList.add('show');
+    
+    setTimeout(() => {
+      statusIndicator.classList.remove('show');
+    }, 1500);
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', initPageFlip);
+</script>
+
+</body>
+</html>
